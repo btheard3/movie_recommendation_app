@@ -4,78 +4,22 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from textblob import TextBlob
-from tensorflow.keras.models import Model, load_model
-from tensorflow.keras.layers import Input, Embedding, Flatten, Dot
-from tensorflow.keras.optimizers import Adam
-import os
+from tensorflow.keras.models import load_model
+from tensorflow.keras.losses import MeanSquaredError
 
 # Load datasets
 ratings_df = pd.read_csv('data/ratings.csv')
 movies_df = pd.read_csv('data/movies.csv')
 tags_df = pd.read_csv('data/tags.csv')
 
-# Check if the model exists, otherwise define and train it
+# Check for the model and load it
 model_path = 'models/recommendation_model.h5'
-
-def train_and_save_model(ratings):
-    """Train the collaborative filtering model and save it."""
-    # Preprocess user and movie mappings
-    user_ids = ratings['userId'].unique()
-    movie_ids = ratings['movieId'].unique()
-    user_id_map = {id_: i for i, id_ in enumerate(user_ids)}
-    movie_id_map = {id_: i for i, id_ in enumerate(movie_ids)}
-    ratings['user_idx'] = ratings['userId'].map(user_id_map)
-    ratings['movie_idx'] = ratings['movieId'].map(movie_id_map)
-
-    # Define embedding size
-    embedding_size = 50
-
-    # Input layers
-    user_input = Input(shape=(1,), name='user_input')
-    movie_input = Input(shape=(1,), name='movie_input')
-
-    # Embedding layers
-    user_embedding = Embedding(input_dim=len(user_ids), output_dim=embedding_size, name='user_embedding')(user_input)
-    movie_embedding = Embedding(input_dim=len(movie_ids), output_dim=embedding_size, name='movie_embedding')(movie_input)
-
-    # Flatten embeddings
-    user_vector = Flatten()(user_embedding)
-    movie_vector = Flatten()(movie_embedding)
-
-    # Dot product for prediction
-    dot_product = Dot(axes=1)([user_vector, movie_vector])
-
-    # Compile model
-    model = Model(inputs=[user_input, movie_input], outputs=dot_product)
-    model.compile(optimizer=Adam(learning_rate=0.001), loss='mse', metrics=['mae'])
-
-    # Train-test split
-    train_data = ratings.sample(frac=0.8, random_state=42)
-    test_data = ratings.drop(train_data.index)
-
-    # Train the model
-    model.fit(
-        [train_data['user_idx'], train_data['movie_idx']],
-        train_data['rating'],
-        validation_data=(
-            [test_data['user_idx'], test_data['movie_idx']],
-            test_data['rating']
-        ),
-        epochs=5,
-        batch_size=64,
-        verbose=1
-    )
-
-    # Save the model
-    model.save(model_path)
-    return model
-
-# Load or train the model
-if os.path.exists(model_path):
-    model = load_model(model_path)
-else:
-    st.write("Training the model for the first time...")
-    model = train_and_save_model(ratings_df)
+try:
+    # Load the model with the correct loss function mapping
+    model = load_model(model_path, custom_objects={'mse': MeanSquaredError()})
+    st.write("Model loaded successfully!")
+except Exception as e:
+    st.error(f"Error loading model: {e}")
 
 # Precompute TF-IDF matrix for movie tags
 tfidf = TfidfVectorizer(stop_words='english')

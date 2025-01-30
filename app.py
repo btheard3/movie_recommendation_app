@@ -20,6 +20,21 @@ def load_data():
 
 ratings_df, movies_df, tags_df = load_data()
 
+# 🔥 New: Keyword Mapping for Better Genre Recognition
+GENRE_KEYWORDS = {
+    "scary": "Horror",
+    "funny": "Comedy",
+    "romantic": "Romance",
+    "space": "Sci-Fi",
+    "future": "Sci-Fi",
+    "adventure": "Action|Adventure",
+    "hero": "Action|Superhero",
+    "detective": "Mystery|Thriller",
+    "historical": "History|Drama",
+    "sad": "Drama",
+    "epic": "Fantasy|Adventure",
+}
+
 # Load or compute TF-IDF matrix and vectorizer with caching
 @st.cache_resource
 def compute_tfidf_matrix():
@@ -67,43 +82,58 @@ model = load_recommendation_model()
 # Streamlit App
 st.title("🎬 Enhanced Movie Recommendation System")
 
-# User Feedback for Personalized Recommendations
+# 🎭 **User Feedback for Personalized Recommendations**
 st.subheader("🎭 Enter Your Movie Preferences")
 feedback = st.text_area("Describe the type of movies you like (e.g., 'I enjoy action-packed thrillers'):")
 
 if feedback:
-    # Sentiment Analysis
+    # **Sentiment Analysis**
     sentiment = TextBlob(feedback).sentiment
     st.write(f"**Sentiment Analysis:** Polarity = {sentiment.polarity:.2f}, Subjectivity = {sentiment.subjectivity:.2f}")
 
-    # Extract genres from feedback
-    preferred_genres = [genre for genre in movies_df['genres'].unique() if genre.lower() in feedback.lower()]
-    
-    # Recommend Movies Based on Feedback
-    if preferred_genres:
-        filtered_movies = movies_df[movies_df['genres'].apply(lambda x: any(genre in x for genre in preferred_genres))]
-        recommended_movies = filtered_movies.sample(n=min(10, len(filtered_movies)))  # Random 10 movies from matching genres
+    # **Map Feedback Keywords to Genres**
+    detected_genres = []
+    for word, mapped_genre in GENRE_KEYWORDS.items():
+        if word in feedback.lower():
+            detected_genres.append(mapped_genre)
+
+    if detected_genres:
+        filtered_movies = movies_df[movies_df['genres'].str.contains('|'.join(detected_genres), na=False)]
+        recommended_movies = filtered_movies.sample(n=min(10, len(filtered_movies))) if not filtered_movies.empty else pd.DataFrame()
 
         st.subheader("🎥 Personalized Movie Recommendations")
-        for _, row in recommended_movies.iterrows():
-            st.write(f"- **{row['title']}** (Genres: {row['genres']})")
+        if not recommended_movies.empty:
+            for _, row in recommended_movies.iterrows():
+                st.write(f"- **{row['title']}** (Genres: {row['genres']})")
+        else:
+            st.warning("No movies found matching your feedback. Try different wording.")
     else:
         st.warning("No genres detected in your feedback. Try mentioning specific movie genres.")
 
-# Movie Search
+# 🔎 **Movie Search**
 st.subheader("🔎 Search for Movies by Genre or Tags")
 search_query = st.text_input("Search for a movie or genre:")
 
 if search_query:
     try:
-        search_vector = tfidf.transform([search_query])  # Now tfidf is always available
+        # **Map Search Queries to Known Genres**
+        search_expanded = search_query
+        for word, mapped_genre in GENRE_KEYWORDS.items():
+            if word in search_query.lower():
+                search_expanded = mapped_genre
+        
+        search_vector = tfidf.transform([search_expanded])  # Fix dimension issue
         similarity_scores = cosine_similarity(search_vector, tfidf_matrix).flatten()
 
         top_indices = np.argsort(similarity_scores)[-10:][::-1]  # Get top 10 matches
         recommendations = movies_with_tags.iloc[top_indices]
 
         st.subheader("🎬 Movies Matching Your Search")
-        for _, row in recommendations.iterrows():
-            st.write(f"- **{row['title']}** (Genres: {row['genres']})")
+        if not recommendations.empty:
+            for _, row in recommendations.iterrows():
+                st.write(f"- **{row['title']}** (Genres: {row['genres'] if pd.notna(row['genres']) else 'No genres listed'})")
+        else:
+            st.warning("No matching movies found. Try different keywords.")
     except Exception as e:
         st.error(f"An error occurred while searching: {e}")
+

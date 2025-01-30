@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import pickle
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from textblob import TextBlob
@@ -19,7 +20,7 @@ def load_data():
 
 ratings_df, movies_df, tags_df = load_data()
 
-# Load or compute TF-IDF matrix with caching
+# Load or compute TF-IDF matrix and vectorizer with caching
 @st.cache_resource
 def compute_tfidf_matrix():
     tags_df['tag'] = tags_df['tag'].fillna('')
@@ -27,21 +28,27 @@ def compute_tfidf_matrix():
     movies_with_tags = pd.merge(movies_df, movie_tags, on='movieId', how='left')
     movies_with_tags['tag'] = movies_with_tags['tag'].fillna('')
 
-    # Initialize TF-IDF vectorizer
+    # Initialize and fit TF-IDF vectorizer
     tfidf = TfidfVectorizer(stop_words='english')
     matrix = tfidf.fit_transform(movies_with_tags['tag'])
-    
-    # Save TF-IDF matrix and movies_with_tags for future use
+
+    # Save both the TF-IDF matrix and the vectorizer for future use
     save_npz('data/tfidf_matrix.npz', matrix)
+    with open('data/tfidf_vectorizer.pkl', 'wb') as f:
+        pickle.dump(tfidf, f)
+
     movies_with_tags.to_csv('data/movies_with_tags.csv', index=False)
     
     return matrix, movies_with_tags, tfidf
 
-# Check if precomputed files exist; otherwise, recompute
-if os.path.exists('data/tfidf_matrix.npz') and os.path.exists('data/movies_with_tags.csv'):
+# Ensure precomputed files exist; otherwise, recompute
+if os.path.exists('data/tfidf_matrix.npz') and os.path.exists('data/movies_with_tags.csv') and os.path.exists('data/tfidf_vectorizer.pkl'):
     tfidf_matrix = load_npz('data/tfidf_matrix.npz')
     movies_with_tags = pd.read_csv('data/movies_with_tags.csv')
-    tfidf = TfidfVectorizer(stop_words='english')  # Ensure tfidf is initialized
+    
+    # Load the saved TF-IDF vectorizer
+    with open('data/tfidf_vectorizer.pkl', 'rb') as f:
+        tfidf = pickle.load(f)
 else:
     tfidf_matrix, movies_with_tags, tfidf = compute_tfidf_matrix()
 
@@ -89,7 +96,7 @@ search_query = st.text_input("Search for a movie or genre:")
 
 if search_query:
     try:
-        search_vector = tfidf.transform([search_query])  # Fix dimension issue
+        search_vector = tfidf.transform([search_query])  # Now tfidf is always available
         similarity_scores = cosine_similarity(search_vector, tfidf_matrix).flatten()
 
         top_indices = np.argsort(similarity_scores)[-10:][::-1]  # Get top 10 matches

@@ -5,12 +5,10 @@ import gdown
 import os
 import tensorflow as tf
 import pickle
-from tensorflow.keras.models import Sequential, load_model
-from tensorflow.keras.layers import Embedding, Flatten, Dense, Dot
-from tensorflow.keras.losses import MeanSquaredError
+from tensorflow.keras.models import load_model
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from scipy.sparse import save_npz, load_npz
+from scipy.sparse import load_npz
 
 # Google Drive File IDs
 FILE_IDS = {
@@ -43,53 +41,16 @@ def load_data():
 
 ratings_df, movies_df, tags_df = load_data()
 
-# Train recommendation model
+# Load trained recommendation model
 @st.cache_resource
-def train_recommendation_model():
+def load_recommendation_model():
     model_path = "models/recommendation_model.h5"
-    
-    if os.path.exists(model_path):
-        return load_model(model_path, custom_objects={'mse': MeanSquaredError()})
-    
-    # Prepare training data
-    user_ids = ratings_df["userId"].unique()
-    movie_ids = ratings_df["movieId"].unique()
-    
-    user_id_map = {id: i for i, id in enumerate(user_ids)}
-    movie_id_map = {id: i for i, id in enumerate(movie_ids)}
-    
-    ratings_df["user_idx"] = ratings_df["userId"].map(user_id_map)
-    ratings_df["movie_idx"] = ratings_df["movieId"].map(movie_id_map)
+    if not os.path.exists(model_path):
+        st.error("❌ Model not found! Please run `train_model.py` first.")
+        return None
+    return load_model(model_path)
 
-    num_users = len(user_ids)
-    num_movies = len(movie_ids)
-
-    # Build collaborative filtering model
-    model = Sequential([
-        Embedding(input_dim=num_users, output_dim=50, input_length=1, name="user_embedding"),
-        Flatten(),
-        Dense(50, activation="relu"),
-        Dense(1, activation="linear")
-    ])
-
-    model.compile(optimizer="adam", loss="mse", metrics=["mae"])
-
-    # Train model
-    model.fit(
-        x=[ratings_df["user_idx"].values],
-        y=ratings_df["rating"].values,
-        batch_size=64,
-        epochs=5,
-        verbose=1
-    )
-
-    # Save model
-    os.makedirs("models", exist_ok=True)
-    model.save(model_path)
-    
-    return model
-
-model = train_recommendation_model()
+model = load_recommendation_model()
 
 # Load or compute TF-IDF matrix
 @st.cache_resource

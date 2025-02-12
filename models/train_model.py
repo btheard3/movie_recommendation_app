@@ -40,7 +40,7 @@ model.fit(
     x=X_train,  # ✅ Fixed issue: Pass as NumPy array
     y=y_train,
     batch_size=64,
-    epochs=5,
+    epochs=3,
     verbose=1
 )
 

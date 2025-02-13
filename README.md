@@ -5,12 +5,17 @@ A machine learning-powered movie recommendation system using Collaborative Filte
 This project aims to build a Movie Recommendation System using user-movie interactions from the MovieLens dataset. The system implements multiple models:
 
 ✅ Baseline Model (Top-rated movies)
+
 ✅ Collaborative Filtering Model (Matrix Factorization using Embeddings)
+
 ✅ Deep Learning Model (Neural Network-based recommendations)
+
 ✅ Content-Based Filtering (TF-IDF + Cosine Similarity for genre-based search)
+
 ✅ Streamlit Web App for user interaction
 
 📂 Project Structure
+
 📦 movie_recommendation_system
 │── 📂 data/ # MovieLens dataset (ratings, movies, tags)
 │── 📂 models/ # Saved trained models (recommendation_model.h5)
@@ -21,6 +26,7 @@ This project aims to build a Movie Recommendation System using user-movie intera
 │── 📜 Recommendation_System_Capstone.ipynb # Jupyter Notebook for EDA & Training
 
 🚀 Setup Instructions
+
 1️⃣ Clone the repository
 git clone https://github.com/yourusername/movie-recommendation-system.git
 cd movie-recommendation-system
@@ -50,16 +56,22 @@ User Activity (Most users rate few movies, some rate thousands)
 Movie Popularity (Few movies receive most ratings)
 Sparsity of User-Movie Matrix (~99.81% sparse)
 📈 Key Visualizations
-✅ Rating Distribution (Bar Chart)
-✅ Number of Ratings per User (Histogram)
-✅ Number of Ratings per Movie (Histogram)
+✅ Rating Distribution (Bar Chart) ![image](https://github.com/user-attachments/assets/49f04d36-6f49-41b9-b879-018b2e63b4c6)
+
+✅ Number of Ratings per User (Histogram) ![image](https://github.com/user-attachments/assets/161deb5f-12ad-4f36-9ca4-817dad260e58)
+
+✅ Number of Ratings per Movie (Histogram) ![image](https://github.com/user-attachments/assets/88c7c7f5-d76e-4779-868f-de6d07791d13)
+
 
 🏗 Feature Engineering
+
 Mapped User IDs & Movie IDs to unique indices
 Train-Test Split (80-20%)
 Converted timestamps to datetime
 Created TF-IDF vectors for Content-Based Filtering
+
 🧠 Models Implemented
+
 1️⃣ Baseline Model (Top-rated movies)
 📌 Simply recommends top 10 highest-rated movies.
 ⚠ Limitation: No personalization for users.
